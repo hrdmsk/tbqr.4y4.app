@@ -119,8 +119,7 @@ import QRHiddenArea from "../components/QRHiddenArea.astro";
         };
 
         const syncParams = () => {
-            // Only sync if "Same as incoming" is checked
-            if (!sameAsIncomingCb.checked) return;
+            // Sync whenever Incoming fields change
 
             // Sync text fields
             if (inputs.host && smtpInputs.host)
@@ -131,8 +130,6 @@ import QRHiddenArea from "../components/QRHiddenArea.astro";
                 smtpInputs.pass.value = inputs.pass.value;
 
             // Sync Security & Port
-            // If Incoming is SSL -> SMTP SSL (465)
-            // Else -> SMTP STARTTLS (587)
             if (inputs.security && smtpInputs.security && smtpInputs.port) {
                 const isIncomingSSL =
                     parseInt(inputs.security.value) === AppConfig.SECURITY.SSL;
@@ -142,7 +139,7 @@ import QRHiddenArea from "../components/QRHiddenArea.astro";
                     smtpInputs.port.value = AppConfig.PORTS.SMTP.SSL.toString();
                 } else {
                     smtpInputs.security.value =
-                        AppConfig.SECURITY.NONE.toString(); // Defaulting to NONE for non-SSL incoming
+                        AppConfig.SECURITY.NONE.toString();
                     smtpInputs.port.value =
                         AppConfig.PORTS.SMTP.PLAIN.toString();
                 }
@@ -156,9 +153,6 @@ import QRHiddenArea from "../components/QRHiddenArea.astro";
                 el.addEventListener("change", syncParams);
             }
         });
-
-        // When checking "Same as incoming", immediately sync
-        sameAsIncomingCb.addEventListener("change", syncParams);
 
         // Run once on init to handle pre-filled values
         syncParams();
@@ -200,10 +194,6 @@ import QRHiddenArea from "../components/QRHiddenArea.astro";
     }
 
     function collectConfigFromForm() {
-        const sameAsIncoming = (
-            document.getElementById("same-as-incoming") as HTMLInputElement
-        ).checked;
-
         // Element取得ヘルパー
         const getVal = (id: string) =>
             (document.getElementById(id) as HTMLInputElement).value;
@@ -221,38 +211,14 @@ import QRHiddenArea from "../components/QRHiddenArea.astro";
             auth: getInt("auth"),
         };
 
-        let smtpConfig: SmtpConfig;
-
-        if (sameAsIncoming) {
-            // Use base config but ensure explicitly synced values are respected if we want to rely on physical inputs
-            // But logic says: if 'sameAsIncoming', use base values implicitly OR explicitly.
-            // Since we conform to "Input Completion" request, the physical inputs ARE filled.
-            // However, for consistency, if 'sameAsIncoming' is true, we conceptually mirror Incoming.
-            smtpConfig = {
-                host: baseConfig.host,
-                security:
-                    baseConfig.security === AppConfig.SECURITY.SSL
-                        ? AppConfig.SECURITY.SSL
-                        : AppConfig.SECURITY.STARTTLS,
-                port:
-                    baseConfig.security === AppConfig.SECURITY.SSL
-                        ? AppConfig.PORTS.SMTP.SSL
-                        : AppConfig.PORTS.SMTP.PLAIN,
-                user: baseConfig.user,
-                pass: baseConfig.pass,
-            };
-        } else {
-            const smtpUser = getVal("smtp-username");
-            const smtpPass = getVal("smtp-password");
-
-            smtpConfig = {
-                host: getVal("smtp-host"),
-                security: getInt("smtp-security"),
-                port: getInt("smtp-port"),
-                user: smtpUser || baseConfig.user, // Still keep fallback just in case
-                pass: smtpPass || baseConfig.pass,
-            };
-        }
+        // Always collect from SMTP fields as they are synced in background
+        const smtpConfig: SmtpConfig = {
+            host: getVal("smtp-host"),
+            security: getInt("smtp-security"),
+            port: getInt("smtp-port"),
+            user: getVal("smtp-username") || baseConfig.user,
+            pass: getVal("smtp-password") || baseConfig.pass,
+        };
 
         return { base: baseConfig, smtp: smtpConfig };
     }

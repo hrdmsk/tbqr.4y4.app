@@ -1,6 +1,13 @@
 ---
+const pathname = new URL(Astro.request.url).pathname;
 ---
 <h1>Thunderbird QR生成</h1>
+
+<nav class="nav-links">
+    <a href="/" class={pathname === "/" ? "active" : ""}>作成フォーム</a>
+    <a href="/guide" class={pathname === "/guide" ? "active" : ""}>仕様・使い方解説</a>
+</nav>
+
 <p class="description">
     設定情報を入力し、ボタンを押すと<br>別タブで設定用QRコードが表示されます。
 </p>
@@ -10,6 +17,33 @@
         text-align: center;
         color: #444;
         margin-bottom: 0.5em;
+    }
+
+    .nav-links {
+        display: flex;
+        justify-content: center;
+        gap: 1em;
+        margin-bottom: 1.5em;
+    }
+
+    .nav-links a {
+        text-decoration: none;
+        color: #666;
+        padding: 5px 10px;
+        border-radius: 4px;
+        transition: background-color 0.2s, color 0.2s;
+        font-weight: 500;
+    }
+
+    .nav-links a:hover {
+        background-color: #e9ecef;
+        color: #333;
+    }
+
+    .nav-links a.active {
+        background-color: #e7f1ff;
+        color: #007bff;
+        font-weight: bold;
     }
 
     .description {

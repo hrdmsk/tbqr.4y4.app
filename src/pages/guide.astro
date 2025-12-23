@@ -1,0 +1,174 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="解説と仕様 | Thunderbird QR生成">
+    <div class="guide-container">
+        <header>
+            <h1>QRコードの仕様と使い方</h1>
+            <a href="/" class="back-link">← トップページに戻る</a>
+        </header>
+
+        <section class="guide-section">
+            <h2>📱 アプリでの使い方</h2>
+            <p>
+                生成されたQRコードは、Thunderbird Android版の設定移行機能で使用します。
+            </p>
+            <ol class="step-list">
+                <li>Android版 <strong>Thunderbird</strong> を起動します。</li>
+                <li>
+                    「設定をインポート」または「アカウントの追加」を選択します。
+                </li>
+                <li>
+                    <strong>「QRコードをスキャン」</strong
+                    >を選択し、画面上のQRコードを読み取ります。
+                </li>
+                <li>
+                    パスワード等の情報が自動入力されていることを確認し、完了します。
+                </li>
+            </ol>
+        </section>
+
+        <section class="guide-section">
+            <h2>🔧 技術仕様 (JSON構造)</h2>
+            <p>
+                このQRコードには、Thunderbirdが解釈可能な以下の配列形式（JSON）が含まれています。
+            </p>
+
+            <div class="code-block">
+                <pre><code>[
+  1,           // バージョン
+  [1, 1],      // フラグ
+  [            // 受信設定 (Incoming)
+    1,         // プロトコル (0:IMAP, 1:POP3)
+    "host",    // サーバー名
+    110,       // ポート
+    0,         // セキュリティ (0:None, 1:STARTTLS, 2:SSL)
+    1,         // 認証方式 (1:平文, 2:暗号化PW)
+    "user",    // ユーザー名
+    "email",   // メールアドレス
+    "pass"     // パスワード
+  ],
+  [[           // 送信設定 (Outgoing)
+    [
+      0,       // 固定値
+      "host",  // SMTPサーバー名
+      587,     // SMTPポート
+      1,       // SMTPセキュリティ
+      1,       // SMTP認証方式
+      "user",  // SMTPユーザー名
+      "pass"   // SMTPパスワード
+    ],
+    ["email", "email"] // 紐付け
+  ]]
+]</code></pre>
+            </div>
+            <p class="note">
+                ※配列の順番とデータ型が厳密に決められており、キー名（"host"など）は持ちません。
+            </p>
+        </section>
+
+        <section class="guide-section">
+            <h2>🔒 セキュリティについて</h2>
+            <ul class="security-list">
+                <li>
+                    <strong>パスワードの扱い:</strong> 生成されるQRコードには入力したパスワードがそのまま含まれます。
+                </li>
+                <li>
+                    <strong>データの破棄:</strong> 設定完了後は、保存したQRコード画像を速やかに削除してください。
+                </li>
+                <li>
+                    <strong>処理の安全性:</strong> QR生成処理はすべてブラウザ内（JavaScript）で完結しており、外部サーバーに設定情報を送信することはありません。
+                </li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>📝 関連情報</h2>
+            <p>
+                Thunderbird公式サイト: <br>
+                <a href="https://www.thunderbird.net/ja/mobile/">https://www.thunderbird.net/ja/mobile/</a>
+            </p>
+            <p>
+                Thunderbird Android版のQRコード設定移行機能に関する公式ドキュメント: <br>                
+                <a href="https://support.mozilla.org/ja/kb/thunderbird-mobile-qr-code-import">https://support.mozilla.org/ja/kb/thunderbird-mobile-qr-code-import</a>
+            </p>
+            
+        </section>
+    </div>
+</Layout>
+
+<style>
+    .guide-container {
+        text-align: left;
+        line-height: 1.6;
+    }
+
+    header {
+        text-align: center;
+        margin-bottom: 2em;
+        padding-bottom: 1em;
+        border-bottom: 1px solid #eee;
+    }
+
+    h1 {
+        color: #444;
+        margin-bottom: 0.5em;
+    }
+
+    .back-link {
+        display: inline-block;
+        color: #007bff;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    .back-link:hover {
+        text-decoration: underline;
+    }
+
+    .guide-section {
+        margin-bottom: 3em;
+    }
+
+    h2 {
+        color: #0056b3;
+        font-size: 1.3em;
+        border-left: 5px solid #0056b3;
+        padding-left: 10px;
+        margin-bottom: 1em;
+    }
+
+    .step-list {
+        background: #f8f9fa;
+        padding: 1.5em 1.5em 1.5em 2.5em;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+    .step-list li {
+        margin-bottom: 0.5em;
+    }
+
+    .code-block {
+        background: #2d2d2d;
+        color: #f8f8f2;
+        padding: 1.5em;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-family: Consolas, Monaco, "Andale Mono", monospace;
+        font-size: 0.9em;
+        margin: 1em 0;
+    }
+
+    .note {
+        font-size: 0.9em;
+        color: #666;
+        background-color: #fff3cd;
+        padding: 0.5em 1em;
+        border-radius: 4px;
+        border: 1px solid #ffeeba;
+    }
+
+    .security-list li {
+        margin-bottom: 0.8em;
+    }
+</style>
