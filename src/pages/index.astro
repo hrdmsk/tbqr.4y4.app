@@ -1,0 +1,286 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Header from "../components/Header.astro";
+import IncomingForm from "../components/IncomingForm.astro";
+import SMTPForm from "../components/SMTPForm.astro";
+import QRHiddenArea from "../components/QRHiddenArea.astro";
+---
+
+<Layout title="Thunderbird設定QR生成">
+    <Header />
+
+    <form id="mail-config-form">
+        <IncomingForm />
+        <SMTPForm />
+        <button type="submit" class="button-generate"
+            >別タブでQRコードを生成・表示</button
+        >
+    </form>
+
+    <QRHiddenArea />
+</Layout>
+
+<style>
+    .button-generate {
+        color: white;
+        border: none;
+        cursor: pointer;
+        padding: 15px 20px;
+        font-size: 1.1em;
+        font-weight: bold;
+        border-radius: 4px;
+        width: 100%;
+        background-color: #007bff;
+        transition: background-color 0.2s;
+        margin-top: 1em;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .button-generate:hover {
+        background-color: #0056b3;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+</style>
+
+<script>
+    // CDNから読み込まれるQRCodeライブラリの型定義回避
+    declare const QRCode: any;
+
+    /**
+     * ------------------------------------------------------------------
+     * Type Definitions
+     * ------------------------------------------------------------------
+     */
+    import { AppConfig } from "../lib/constants";
+    import {
+        buildThunderbirdData,
+        type ThunderbirdConfig,
+        type SmtpConfig,
+    } from "../lib/thunderbird";
+    import { openResultTab } from "../lib/ui-helpers";
+
+    /**
+     * ------------------------------------------------------------------
+     * UI Event Handlers
+     * ------------------------------------------------------------------
+     */
+    const form = document.getElementById("mail-config-form");
+    const sameAsIncomingCb = document.getElementById(
+        "same-as-incoming",
+    ) as HTMLInputElement;
+    const smtpWrapper = document.getElementById("smtp-settings-wrapper");
+    const securitySelect = document.getElementById("security");
+
+    if (form && sameAsIncomingCb && smtpWrapper && securitySelect) {
+        // 1. SMTP設定の表示切り替え
+        sameAsIncomingCb.addEventListener("change", (e) => {
+            const target = e.target as HTMLInputElement;
+            smtpWrapper.style.display = target.checked ? "none" : "block";
+        });
+
+        // 2. 受信セキュリティ変更時のポート自動入力
+        securitySelect.addEventListener("change", (e) => {
+            const target = e.target as HTMLSelectElement;
+            updateIncomingPort(target.value);
+        });
+    }
+
+    /**
+     * 3. フォーム送信時（QR生成）
+     */
+    if (form) {
+        form.addEventListener("submit", (e) => {
+            e.preventDefault();
+            handleFormSubmit();
+        });
+    }
+
+    // Initialize Sync Logic
+    initSMTPSync();
+
+    function initSMTPSync() {
+        if (!sameAsIncomingCb || !smtpWrapper) return;
+
+        const inputs = {
+            host: document.getElementById("host") as HTMLInputElement,
+            user: document.getElementById("username") as HTMLInputElement,
+            pass: document.getElementById("password") as HTMLInputElement,
+            security: document.getElementById("security") as HTMLSelectElement,
+        };
+
+        const smtpInputs = {
+            host: document.getElementById("smtp-host") as HTMLInputElement,
+            user: document.getElementById("smtp-username") as HTMLInputElement,
+            pass: document.getElementById("smtp-password") as HTMLInputElement,
+            port: document.getElementById("smtp-port") as HTMLInputElement,
+            security: document.getElementById(
+                "smtp-security",
+            ) as HTMLSelectElement,
+        };
+
+        const syncParams = () => {
+            // Only sync if "Same as incoming" is checked
+            if (!sameAsIncomingCb.checked) return;
+
+            // Sync text fields
+            if (inputs.host && smtpInputs.host)
+                smtpInputs.host.value = inputs.host.value;
+            if (inputs.user && smtpInputs.user)
+                smtpInputs.user.value = inputs.user.value;
+            if (inputs.pass && smtpInputs.pass)
+                smtpInputs.pass.value = inputs.pass.value;
+
+            // Sync Security & Port
+            // If Incoming is SSL -> SMTP SSL (465)
+            // Else -> SMTP STARTTLS (587)
+            if (inputs.security && smtpInputs.security && smtpInputs.port) {
+                const isIncomingSSL =
+                    parseInt(inputs.security.value) === AppConfig.SECURITY.SSL;
+                if (isIncomingSSL) {
+                    smtpInputs.security.value =
+                        AppConfig.SECURITY.SSL.toString();
+                    smtpInputs.port.value = AppConfig.PORTS.SMTP.SSL.toString();
+                } else {
+                    smtpInputs.security.value =
+                        AppConfig.SECURITY.NONE.toString(); // Defaulting to NONE for non-SSL incoming
+                    smtpInputs.port.value =
+                        AppConfig.PORTS.SMTP.PLAIN.toString();
+                }
+            }
+        };
+
+        // Attach listeners to Incoming fields
+        Object.values(inputs).forEach((el) => {
+            if (el) {
+                el.addEventListener("input", syncParams);
+                el.addEventListener("change", syncParams);
+            }
+        });
+
+        // When checking "Same as incoming", immediately sync
+        sameAsIncomingCb.addEventListener("change", syncParams);
+
+        // Run once on init to handle pre-filled values
+        syncParams();
+    }
+
+    function updateIncomingPort(securityValue: string) {
+        const protocolEl = document.getElementById(
+            "protocol",
+        ) as HTMLSelectElement;
+        const portInput = document.getElementById("port") as HTMLInputElement;
+
+        const isSSL = parseInt(securityValue) === AppConfig.SECURITY.SSL;
+        const isIMAP = parseInt(protocolEl.value) === AppConfig.PROTOCOL.IMAP;
+
+        if (isSSL) {
+            portInput.value = isIMAP
+                ? AppConfig.PORTS.IMAP.SSL.toString()
+                : AppConfig.PORTS.POP3.SSL.toString();
+        } else {
+            portInput.value = isIMAP
+                ? AppConfig.PORTS.IMAP.PLAIN.toString()
+                : AppConfig.PORTS.POP3.PLAIN.toString();
+        }
+    }
+
+    function handleFormSubmit() {
+        const config = collectConfigFromForm();
+
+        // Validation: Verify if SMTP host is present (even if hidden)
+        // If "Same as incoming" is checked, config.smtp.host comes from base.host.
+        // base.host comes from #host input.
+        if (!config.smtp.host || config.smtp.host.trim() === "") {
+            alert("SMTPサーバー名が設定されていません。");
+            return;
+        }
+
+        const thunderbirdData = buildThunderbirdData(config);
+        generateAndOpenQR(thunderbirdData);
+    }
+
+    function collectConfigFromForm() {
+        const sameAsIncoming = (
+            document.getElementById("same-as-incoming") as HTMLInputElement
+        ).checked;
+
+        // Element取得ヘルパー
+        const getVal = (id: string) =>
+            (document.getElementById(id) as HTMLInputElement).value;
+        const getInt = (id: string) =>
+            parseInt((document.getElementById(id) as HTMLInputElement).value);
+
+        const baseConfig = {
+            email: getVal("email"),
+            user: getVal("username"),
+            pass: getVal("password"),
+            host: getVal("host"),
+            port: getInt("port"),
+            protocol: getInt("protocol"),
+            security: getInt("security"),
+            auth: getInt("auth"),
+        };
+
+        let smtpConfig: SmtpConfig;
+
+        if (sameAsIncoming) {
+            // Use base config but ensure explicitly synced values are respected if we want to rely on physical inputs
+            // But logic says: if 'sameAsIncoming', use base values implicitly OR explicitly.
+            // Since we conform to "Input Completion" request, the physical inputs ARE filled.
+            // However, for consistency, if 'sameAsIncoming' is true, we conceptually mirror Incoming.
+            smtpConfig = {
+                host: baseConfig.host,
+                security:
+                    baseConfig.security === AppConfig.SECURITY.SSL
+                        ? AppConfig.SECURITY.SSL
+                        : AppConfig.SECURITY.STARTTLS,
+                port:
+                    baseConfig.security === AppConfig.SECURITY.SSL
+                        ? AppConfig.PORTS.SMTP.SSL
+                        : AppConfig.PORTS.SMTP.PLAIN,
+                user: baseConfig.user,
+                pass: baseConfig.pass,
+            };
+        } else {
+            const smtpUser = getVal("smtp-username");
+            const smtpPass = getVal("smtp-password");
+
+            smtpConfig = {
+                host: getVal("smtp-host"),
+                security: getInt("smtp-security"),
+                port: getInt("smtp-port"),
+                user: smtpUser || baseConfig.user, // Still keep fallback just in case
+                pass: smtpPass || baseConfig.pass,
+            };
+        }
+
+        return { base: baseConfig, smtp: smtpConfig };
+    }
+
+    function generateAndOpenQR(data: any) {
+        const hiddenContainer = document.getElementById("hidden-qr-container");
+        if (!hiddenContainer) return;
+
+        hiddenContainer.innerHTML = "";
+
+        const email = data[2][6] || "settings";
+
+        // @ts-ignore: QRCode is loaded via CDN
+        new QRCode(hiddenContainer, {
+            text: JSON.stringify(data),
+            width: 300,
+            height: 300,
+            // @ts-ignore
+            correctLevel: QRCode.CorrectLevel.L,
+        });
+
+        setTimeout(() => {
+            const imgTag = hiddenContainer.querySelector("img");
+            if (imgTag && imgTag.src) {
+                openResultTab(imgTag.src, email);
+            } else {
+                alert("QRコードの生成に失敗しました。");
+            }
+        }, 100);
+    }
+</script>
