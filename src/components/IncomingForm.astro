@@ -1,16 +1,31 @@
 ---
+
 ---
+
 <!-- 基本アカウント情報 -->
 <fieldset>
     <legend>アカウント基本情報</legend>
+    <label>差出人名（表示名）</label>
+    <input type="text" id="displayname" placeholder="例: 山田 太郎" />
+
     <label>メールアドレス</label>
-    <input type="email" id="email" placeholder="例: user@example.com" required>
-    
+    <input
+        type="email"
+        id="email"
+        placeholder="例: user@example.com"
+        required
+    />
+
     <label>受信ユーザー名</label>
-    <input type="text" id="username" placeholder="例: user@example.com" required>
-    
+    <input
+        type="text"
+        id="username"
+        placeholder="例: user@example.com"
+        required
+    />
+
     <label>受信パスワード</label>
-    <input type="password" id="password" placeholder="パスワード">
+    <input type="password" id="password" placeholder="パスワード" />
 </fieldset>
 
 <!-- 受信サーバー設定 -->
@@ -21,20 +36,20 @@
         <option value="0">IMAP</option>
         <option value="1" selected>POP3</option>
     </select>
-    
+
     <label>サーバー名</label>
-    <input type="text" id="host" placeholder="例: pop.example.com" required>
-    
+    <input type="text" id="host" placeholder="例: pop.example.com" required />
+
     <label>ポート番号</label>
-    <input type="text" id="port" value="110">
-    
+    <input type="text" id="port" value="110" />
+
     <label>接続の保護</label>
     <select id="security">
         <option value="0" selected>なし</option>
         <option value="1">STARTTLS</option>
         <option value="2">SSL/TLS</option>
     </select>
-    
+
     <label>認証方式</label>
     <select id="auth">
         <option value="1" selected>通常のパスワード認証</option>

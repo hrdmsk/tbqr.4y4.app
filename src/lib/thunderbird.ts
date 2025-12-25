@@ -1,5 +1,6 @@
 export interface BaseConfig {
     email: string;
+    displayName: string;
     user: string;
     pass: string;
     host: string;
@@ -27,8 +28,10 @@ export function buildThunderbirdData(config: ThunderbirdConfig) {
     const incomingArray = [base.protocol, base.host, base.port, base.security, base.auth, base.user, base.email, base.pass];
     const outgoingSettings = [0, smtp.host, smtp.port, smtp.security, base.auth, smtp.user, smtp.pass];
 
+    const identity = [base.email, base.displayName || base.email];
+
     return [
-        1, [1, 1], incomingArray, [[outgoingSettings, [base.email, base.email]]]
+        1, [1, 1], incomingArray, [[outgoingSettings, identity]]
     ];
 }
 
@@ -44,8 +47,10 @@ export function buildMultiThunderbirdData(configs: ThunderbirdConfig[]) {
         const incomingArray = [base.protocol, base.host, base.port, base.security, base.auth, base.user, base.email, base.pass];
         const outgoingSettings = [0, smtp.host, smtp.port, smtp.security, base.auth, smtp.user, smtp.pass];
 
+        const identity = [base.email, base.displayName || base.email];
+
         result.push(incomingArray);
-        result.push([[outgoingSettings, [base.email, base.email]]]);
+        result.push([[outgoingSettings, identity]]);
     });
 
     return result;

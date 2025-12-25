@@ -310,28 +310,30 @@ import QRHiddenArea from "../components/QRHiddenArea.astro";
 
     function groupAccounts(row: string[]) {
         const accounts: any[] = [];
-        // 1つの行に最大10アカウント、各アカウント8項目
-        // 0:メール, 1:プロトコル, 2:受信鯖, 3:受信ユーザ, 4:受信パス, 5:送信鯖, 6:送信ユーザ, 7:送信パス
+        // 1つの行に最大10アカウント、各アカウント9項目
+        // 0:表示名, 1:メール, 2:プロトコル, 3:受信鯖, 4:受信ユーザ, 5:受信パス, 6:送信鯖, 7:送信ユーザ, 8:送信パス
         for (let i = 0; i < 10; i++) {
-            const offset = i * 8;
-            const email = row[offset];
+            const offset = i * 9;
+            const displayName = row[offset];
+            const email = row[offset + 1];
             if (!email) continue;
 
-            const protocolName = (row[offset + 1] || "IMAP").toUpperCase();
+            const protocolName = (row[offset + 2] || "IMAP").toUpperCase();
             const protocol =
                 protocolName === "POP3"
                     ? AppConfig.PROTOCOL.POP3
                     : AppConfig.PROTOCOL.IMAP;
 
-            const host = row[offset + 2];
-            const user = row[offset + 3] || email;
-            const pass = row[offset + 4];
-            const smtpHost = row[offset + 5] || host;
-            const smtpUser = row[offset + 6] || user;
-            const smtpPass = row[offset + 7] || pass;
+            const host = row[offset + 3];
+            const user = row[offset + 4] || email;
+            const pass = row[offset + 5];
+            const smtpHost = row[offset + 6] || host;
+            const smtpUser = row[offset + 7] || user;
+            const smtpPass = row[offset + 8] || pass;
 
             accounts.push({
                 base: {
+                    displayName,
                     email,
                     user,
                     pass,

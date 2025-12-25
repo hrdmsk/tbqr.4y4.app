@@ -13,7 +13,7 @@ import QRHiddenArea from "../components/QRHiddenArea.astro";
         <IncomingForm />
         <SMTPForm />
         <button type="submit" class="button-generate"
-            >別タブでQRコードを生成・表示</button
+            >QRコードを生成・表示</button
         >
     </form>
 
@@ -201,6 +201,7 @@ import QRHiddenArea from "../components/QRHiddenArea.astro";
             parseInt((document.getElementById(id) as HTMLInputElement).value);
 
         const baseConfig = {
+            displayName: getVal("displayname"),
             email: getVal("email"),
             user: getVal("username"),
             pass: getVal("password"),
