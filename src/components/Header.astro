@@ -1,15 +1,20 @@
 ---
 const pathname = new URL(Astro.request.url).pathname;
 ---
+
 <h1>Thunderbird QR生成</h1>
 
 <nav class="nav-links">
     <a href="/" class={pathname === "/" ? "active" : ""}>作成フォーム</a>
-    <a href="/guide" class={pathname === "/guide" ? "active" : ""}>仕様・使い方解説</a>
+    <a href="/bulk" class={pathname === "/bulk" ? "active" : ""}>一括読み込み</a
+    >
+    <a href="/guide" class={pathname === "/guide" ? "active" : ""}
+        >仕様・使い方解説</a
+    >
 </nav>
 
 <p class="description">
-    設定情報を入力し、ボタンを押すと<br>別タブで設定用QRコードが表示されます。
+    設定情報を入力し、ボタンを押すと<br />別タブで設定用QRコードが表示されます。
 </p>
 
 <style>
@@ -31,7 +36,9 @@ const pathname = new URL(Astro.request.url).pathname;
         color: #666;
         padding: 5px 10px;
         border-radius: 4px;
-        transition: background-color 0.2s, color 0.2s;
+        transition:
+            background-color 0.2s,
+            color 0.2s;
         font-weight: 500;
     }
 

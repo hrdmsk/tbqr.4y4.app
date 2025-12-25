@@ -31,3 +31,22 @@ export function buildThunderbirdData(config: ThunderbirdConfig) {
         1, [1, 1], incomingArray, [[outgoingSettings, [base.email, base.email]]]
     ];
 }
+
+/**
+ * Builds Thunderbird data for multiple accounts
+ * Format: [1, [1, 1], in1, [[out1, [email1, email1]]], in2, [[out2, [email2, email2]]], ...]
+ */
+export function buildMultiThunderbirdData(configs: ThunderbirdConfig[]) {
+    const result: any[] = [1, [1, 1]];
+
+    configs.forEach(config => {
+        const { base, smtp } = config;
+        const incomingArray = [base.protocol, base.host, base.port, base.security, base.auth, base.user, base.email, base.pass];
+        const outgoingSettings = [0, smtp.host, smtp.port, smtp.security, base.auth, smtp.user, smtp.pass];
+
+        result.push(incomingArray);
+        result.push([[outgoingSettings, [base.email, base.email]]]);
+    });
+
+    return result;
+}

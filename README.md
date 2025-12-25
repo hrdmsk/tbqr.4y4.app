@@ -23,7 +23,8 @@ src/
 │   └── ui-helpers.ts        # UI操作ヘルパー (タブ表示、画像生成など)
 └── pages/            # ページルーティング
     ├── index.astro          # メインページ (フォームと統合ロジック)
-    └── guide.astro          # 解説と仕様ページ
+    ├── guide.astro          # 解説と仕様ページ
+    └── bulk.astro           # CSV一括読み込みページ
 ```
 
 ## 各ファイルの役割
@@ -31,10 +32,11 @@ src/
 ### `src/pages/`
 - **index.astro**: アプリケーションのエントリーポイント。フォームの配置、受信・送信設定間のリアルタイム同期ロジック、およびQRコード生成の管理を行います。
 - **guide.astro**: QRコードの利用方法、内部JSON構造の技術仕様、およびセキュリティに関する解説ページです。
+- **bulk.astro**: `public/mailimport.csv` からメール設定を一括で読み込み、マルチアカウント設定を含むQRコードを生成するページです。
 
 ### `src/lib/`
 ビジネスロジックを分離しています。
-- **thunderbird.ts**: フォーム入力をThunderbird専用のJSON配列形式に変換します。TypeScriptの型定義(`ThunderbirdConfig`など)もここで集約管理しています。
+- **thunderbird.ts**: フォーム入力をThunderbird専用のJSON配列形式に変換します。単一アカウント用の `buildThunderbirdData` とマルチアカウント用の `buildMultiThunderbirdData` を含みます。
 - **ui-helpers.ts**: 生成されたQRコードを新規タブでプレビューし、PNG画像として保存する機能を実行します。
 - **constants.ts**: 各種プロトコル番号やポート番号、暗号化設定値を一元管理しています。
 

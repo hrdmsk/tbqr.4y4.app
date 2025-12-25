@@ -1,0 +1,409 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Header from "../components/Header.astro";
+import QRHiddenArea from "../components/QRHiddenArea.astro";
+---
+
+<Layout title="一括読み込み | Thunderbird QR生成">
+    <Header />
+
+    <main class="bulk-container">
+        <section class="info-section">
+            <h2>CSVファイルの読み込み</h2>
+            <p>
+                CSVファイルをアップロードするか、サンプルをダウンロードして内容を編集してから読み込んでください。
+            </p>
+            <div class="action-bar">
+                <button id="download-sample" class="btn-secondary"
+                    >サンプルCSVをダウンロード</button
+                >
+            </div>
+        </section>
+
+        <!-- ドラッグ＆ドロップエリア -->
+        <div id="drop-zone" class="drop-zone">
+            <p>ここにCSVファイルをドラッグ＆ドロップ</p>
+            <span>または</span>
+            <button id="file-select-btn" class="btn-secondary"
+                >ファイルを選択</button
+            >
+            <input
+                type="file"
+                id="file-input"
+                accept=".csv"
+                style="display: none;"
+            />
+        </div>
+
+        <div id="loading-status" style="display: none;">読み込み中...</div>
+
+        <div id="bulk-table-wrapper" style="display: none;">
+            <div class="table-header">
+                <h3>読み込み済みアカウント一覧</h3>
+                <span id="account-count-badge" class="badge">0件</span>
+            </div>
+            <table class="account-table">
+                <thead>
+                    <tr>
+                        <th>No.</th>
+                        <th>代表メールアドレス</th>
+                        <th>アカウント数</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="account-list"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <QRHiddenArea />
+</Layout>
+
+<style>
+    .bulk-container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        padding: 2.5em;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    }
+
+    .info-section {
+        margin-bottom: 2em;
+        padding-bottom: 1em;
+        border-bottom: 1px solid #eee;
+    }
+
+    .action-bar {
+        margin-top: 1em;
+    }
+
+    h2 {
+        color: #333;
+        font-size: 1.4em;
+        margin-bottom: 0.5em;
+    }
+
+    .drop-zone {
+        border: 2px dashed #007bff;
+        border-radius: 8px;
+        padding: 3em;
+        text-align: center;
+        background: #fafafa;
+        transition:
+            border-color 0.2s,
+            background 0.2s;
+        margin-bottom: 2em;
+        cursor: pointer;
+    }
+
+    .drop-zone.dragover {
+        border-color: #0056b3;
+        background: #f0f7ff;
+    }
+
+    .drop-zone p {
+        font-size: 1.2em;
+        color: #555;
+        margin-bottom: 0.5em;
+    }
+
+    .drop-zone span {
+        display: block;
+        margin: 1em 0;
+        color: #999;
+        font-size: 0.9em;
+    }
+
+    .btn-secondary {
+        background: #f8f9fa;
+        color: #333;
+        border: 1px solid #ddd;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9em;
+        transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+        background: #e9ecef;
+        border-color: #bbb;
+    }
+
+    .table-header {
+        display: flex;
+        align-items: center;
+        gap: 1em;
+        margin-bottom: 1em;
+    }
+
+    .table-header h3 {
+        margin: 0;
+        font-size: 1.1em;
+        color: #444;
+    }
+
+    .badge {
+        background: #007bff;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+    }
+
+    .account-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .account-table th,
+    .account-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .account-table th {
+        background: #f8f9fa;
+        color: #666;
+        font-weight: 600;
+        font-size: 0.9em;
+    }
+
+    .btn-qr {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background 0.2s;
+        font-size: 0.9em;
+    }
+
+    .btn-qr:hover {
+        background: #0056b3;
+    }
+
+    #loading-status {
+        text-align: center;
+        padding: 2em;
+        color: #666;
+        font-style: italic;
+    }
+</style>
+
+<script>
+    import { AppConfig } from "../lib/constants";
+    import { buildMultiThunderbirdData } from "../lib/thunderbird";
+    import { openResultTab } from "../lib/ui-helpers";
+
+    declare const QRCode: any;
+
+    const dropZone = document.getElementById("drop-zone");
+    const fileInput = document.getElementById("file-input") as HTMLInputElement;
+    const fileSelectBtn = document.getElementById("file-select-btn");
+    const downloadBtn = document.getElementById("download-sample");
+    const loadingStatus = document.getElementById("loading-status");
+    const tableWrapper = document.getElementById("bulk-table-wrapper");
+    const tbody = document.getElementById("account-list");
+    const countBadge = document.getElementById("account-count-badge");
+
+    // 1. イベントリスナー
+    downloadBtn?.addEventListener("click", downloadSampleCSV);
+    fileSelectBtn?.addEventListener("click", (e) => {
+        e.stopPropagation(); // ドロップゾーンのクリックイベント発火を防ぐ
+        fileInput?.click();
+    });
+    fileInput?.addEventListener("change", (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file) handleFile(file);
+    });
+
+    dropZone?.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+    });
+
+    dropZone?.addEventListener("dragleave", () => {
+        dropZone.classList.remove("dragover");
+    });
+
+    dropZone?.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+        const file = e.dataTransfer?.files[0];
+        if (file) handleFile(file);
+    });
+
+    dropZone?.addEventListener("click", () => {
+        fileInput?.click();
+    });
+
+    function handleFile(file: File) {
+        if (!file.name.endsWith(".csv")) {
+            alert("CSVファイルを選択してください。");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const content = e.target?.result as string;
+            renderCSV(content);
+        };
+        reader.readAsText(file);
+    }
+
+    function renderCSV(csvText: string) {
+        if (!tbody) return;
+        tbody.innerHTML = "";
+        showLoading(false);
+
+        const rows = parseCSV(csvText);
+        if (rows.length === 0) {
+            alert(
+                "有効なデータが見つかりませんでした。CSVの形式を確認してください。",
+            );
+            return;
+        }
+
+        if (tableWrapper) tableWrapper.style.display = "block";
+        if (countBadge) countBadge.innerText = `${rows.length}件`;
+
+        rows.forEach((row, index) => {
+            const accounts = groupAccounts(row);
+            if (accounts.length === 0) return;
+
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${accounts[0].base.email}</td>
+                <td>${accounts.length} アカウント</td>
+                <td><button class="btn-qr">QR生成</button></td>
+            `;
+
+            const btn = tr.querySelector(".btn-qr");
+            btn?.addEventListener("click", () => {
+                const data = buildMultiThunderbirdData(accounts);
+                generateAndOpenQR(data, accounts[0].base.email);
+            });
+
+            tbody.appendChild(tr);
+        });
+    }
+
+    function parseCSV(text: string): string[][] {
+        const lines = text.trim().split(/\r?\n/);
+        if (lines.length < 2) return [];
+
+        // 1行目をスキップして、各行をカンマで区切る
+        return lines
+            .slice(1)
+            .map((line) => {
+                return line.split(",").map((v) => v.trim());
+            })
+            .filter((row) => row.some((v) => v !== ""));
+    }
+
+    function groupAccounts(row: string[]) {
+        const accounts: any[] = [];
+        // 1つの行に最大10アカウント、各アカウント8項目
+        // 0:メール, 1:プロトコル, 2:受信鯖, 3:受信ユーザ, 4:受信パス, 5:送信鯖, 6:送信ユーザ, 7:送信パス
+        for (let i = 0; i < 10; i++) {
+            const offset = i * 8;
+            const email = row[offset];
+            if (!email) continue;
+
+            const protocolName = (row[offset + 1] || "IMAP").toUpperCase();
+            const protocol =
+                protocolName === "POP3"
+                    ? AppConfig.PROTOCOL.POP3
+                    : AppConfig.PROTOCOL.IMAP;
+
+            const host = row[offset + 2];
+            const user = row[offset + 3] || email;
+            const pass = row[offset + 4];
+            const smtpHost = row[offset + 5] || host;
+            const smtpUser = row[offset + 6] || user;
+            const smtpPass = row[offset + 7] || pass;
+
+            accounts.push({
+                base: {
+                    email,
+                    user,
+                    pass,
+                    host,
+                    port:
+                        protocol === AppConfig.PROTOCOL.IMAP
+                            ? AppConfig.PORTS.IMAP.PLAIN
+                            : AppConfig.PORTS.POP3.PLAIN,
+                    protocol,
+                    security: AppConfig.SECURITY.NONE,
+                    auth: 1,
+                },
+                smtp: {
+                    host: smtpHost || host,
+                    security: AppConfig.SECURITY.NONE,
+                    port: AppConfig.PORTS.SMTP.PLAIN,
+                    user: smtpUser,
+                    pass: smtpPass,
+                },
+            });
+        }
+        return accounts;
+    }
+
+    function showLoading(show: boolean) {
+        if (loadingStatus)
+            loadingStatus.style.display = show ? "block" : "none";
+    }
+
+    async function downloadSampleCSV() {
+        try {
+            const response = await fetch("/mailimport.csv");
+            if (!response.ok) throw new Error();
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.style.display = "none";
+            a.href = url;
+            a.download = "mailimport_sample.csv";
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            alert(
+                "サンプルのダウンロードに失敗しました。public/mailimport.csv が存在することを確認してください。",
+            );
+        }
+    }
+
+    function generateAndOpenQR(data: any, email: string) {
+        const hiddenContainer = document.getElementById("hidden-qr-container");
+        if (!hiddenContainer) return;
+        hiddenContainer.innerHTML = "";
+
+        // @ts-ignore
+        new QRCode(hiddenContainer, {
+            text: JSON.stringify(data),
+            width: 400,
+            height: 400,
+            // @ts-ignore
+            correctLevel: QRCode.CorrectLevel.L,
+        });
+
+        setTimeout(() => {
+            const imgTag = hiddenContainer.querySelector("img");
+            if (imgTag && imgTag.src) {
+                openResultTab(imgTag.src, email);
+            } else {
+                alert(
+                    "QRコードの生成に失敗しました。データサイズが大きすぎる可能性があります。",
+                );
+            }
+        }, 150);
+    }
+</script>
