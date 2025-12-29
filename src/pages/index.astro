@@ -41,7 +41,6 @@ import QRHiddenArea from "../components/QRHiddenArea.astro";
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
     }
 </style>
-
 <script>
     // CDNから読み込まれるQRCodeライブラリの型定義回避
     declare const QRCode: any;
@@ -57,7 +56,7 @@ import QRHiddenArea from "../components/QRHiddenArea.astro";
         type ThunderbirdConfig,
         type SmtpConfig,
     } from "../lib/thunderbird";
-    import { openResultTab } from "../lib/ui-helpers";
+    import { generateAndOpenQR } from "../lib/ui-helpers";
 
     /**
      * ------------------------------------------------------------------
@@ -181,16 +180,14 @@ import QRHiddenArea from "../components/QRHiddenArea.astro";
     function handleFormSubmit() {
         const config = collectConfigFromForm();
 
-        // Validation: Verify if SMTP host is present (even if hidden)
-        // If "Same as incoming" is checked, config.smtp.host comes from base.host.
-        // base.host comes from #host input.
         if (!config.smtp.host || config.smtp.host.trim() === "") {
             alert("SMTPサーバー名が設定されていません。");
             return;
         }
 
         const thunderbirdData = buildThunderbirdData(config);
-        generateAndOpenQR(thunderbirdData);
+        const email = config.base.email || "settings";
+        generateAndOpenQR(thunderbirdData, email);
     }
 
     function collectConfigFromForm() {
@@ -222,32 +219,5 @@ import QRHiddenArea from "../components/QRHiddenArea.astro";
         };
 
         return { base: baseConfig, smtp: smtpConfig };
-    }
-
-    function generateAndOpenQR(data: any) {
-        const hiddenContainer = document.getElementById("hidden-qr-container");
-        if (!hiddenContainer) return;
-
-        hiddenContainer.innerHTML = "";
-
-        const email = data[2][6] || "settings";
-
-        // @ts-ignore: QRCode is loaded via CDN
-        new QRCode(hiddenContainer, {
-            text: JSON.stringify(data),
-            width: 300,
-            height: 300,
-            // @ts-ignore
-            correctLevel: QRCode.CorrectLevel.L,
-        });
-
-        setTimeout(() => {
-            const imgTag = hiddenContainer.querySelector("img");
-            if (imgTag && imgTag.src) {
-                openResultTab(imgTag.src, email);
-            } else {
-                alert("QRコードの生成に失敗しました。");
-            }
-        }, 100);
     }
 </script>

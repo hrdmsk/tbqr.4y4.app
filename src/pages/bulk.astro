@@ -199,7 +199,7 @@ import QRHiddenArea from "../components/QRHiddenArea.astro";
 <script>
     import { AppConfig } from "../lib/constants";
     import { buildMultiThunderbirdData } from "../lib/thunderbird";
-    import { openResultTab } from "../lib/ui-helpers";
+    import { generateAndOpenQR } from "../lib/ui-helpers";
 
     declare const QRCode: any;
 
@@ -381,31 +381,5 @@ import QRHiddenArea from "../components/QRHiddenArea.astro";
                 "サンプルのダウンロードに失敗しました。public/mailimport.csv が存在することを確認してください。",
             );
         }
-    }
-
-    function generateAndOpenQR(data: any, email: string) {
-        const hiddenContainer = document.getElementById("hidden-qr-container");
-        if (!hiddenContainer) return;
-        hiddenContainer.innerHTML = "";
-
-        // @ts-ignore
-        new QRCode(hiddenContainer, {
-            text: JSON.stringify(data),
-            width: 400,
-            height: 400,
-            // @ts-ignore
-            correctLevel: QRCode.CorrectLevel.L,
-        });
-
-        setTimeout(() => {
-            const imgTag = hiddenContainer.querySelector("img");
-            if (imgTag && imgTag.src) {
-                openResultTab(imgTag.src, email);
-            } else {
-                alert(
-                    "QRコードの生成に失敗しました。データサイズが大きすぎる可能性があります。",
-                );
-            }
-        }, 150);
     }
 </script>
